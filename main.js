@@ -1,8 +1,8 @@
 // ==UserScript==
 // @name         Reddit Multi Code Decoder for obfuscated content
 // @namespace    freebee9@tuta.io
-// @version      0.2.1
-// @description  Detects obfuscated text in Reddit comments as: binary (usually in NSFW); convert it back to human readable string. Implement a text selection popup for Google search.
+// @version      0.3.0
+// @description  Detects obfuscated text in Reddit comments as: binary and NATO (usually in NSFW); convert it back to human readable string. Implement a text selection popup for Google search.
 // @author       freebee9@tuta.io
 // @license      MIT
 // @match        https://www.reddit.com/*
@@ -13,6 +13,7 @@
 (function() {
     'use strict';
 
+    // ===== COMMON =====
     // Centralized comment selectors for both selection popup and binary decoder
     const COMMENT_SELECTORS = [
         // New Reddit
@@ -29,6 +30,115 @@
         '.comment',
         '[class*="comment"]'
     ];
+
+    // Centralized search provider configuration
+    const SEARCH_CONFIG = {
+        // Default search provider templates
+        providers: {
+            google: {
+                name: "Google",
+                webSearch: "https://www.google.com/search?q={{QUERY}}",
+                imageSearch: "https://www.google.com/search?q={{QUERY}}&tbm=isch",
+                videoSearch: "https://www.google.com/search?q={{QUERY}}&tbm=vid"
+            },
+            bing: {
+                name: "Bing", 
+                webSearch: "https://www.bing.com/search?q={{QUERY}}",
+                imageSearch: "https://www.bing.com/images/search?q={{QUERY}}"
+            },
+            duckduckgo: {
+                name: "DuckDuckGo",
+                webSearch: "https://duckduckgo.com/?q={{QUERY}}",
+                imageSearch: "https://duckduckgo.com/?q={{QUERY}}&iax=images&ia=images"
+            }
+        },
+        
+        // Active configuration
+        active: {
+            provider: "google",
+            defaultSearchType: "imageSearch"  // Default to images as specified
+        }
+    };
+
+    // Search utility functions
+    function buildSearchURL(query, searchType = null) {
+        try {
+            const provider = SEARCH_CONFIG.providers[SEARCH_CONFIG.active.provider];
+            if (!provider) {
+                // Fallback to Google if current provider is invalid
+                SEARCH_CONFIG.active.provider = "google";
+                const fallbackProvider = SEARCH_CONFIG.providers.google;
+                const type = searchType || SEARCH_CONFIG.active.defaultSearchType;
+                const template = fallbackProvider[type] || fallbackProvider.webSearch;
+                return template.replace('{{QUERY}}', encodeURIComponent(query));
+            }
+            
+            const type = searchType || SEARCH_CONFIG.active.defaultSearchType;
+            const template = provider[type] || provider.webSearch;
+            
+            return template.replace('{{QUERY}}', encodeURIComponent(query));
+        } catch (error) {
+            // Ultimate fallback to Google web search
+            return `https://www.google.com/search?q=${encodeURIComponent(query)}`;
+        }
+    }
+
+    function validateProvider(providerName) {
+        return SEARCH_CONFIG.providers.hasOwnProperty(providerName);
+    }
+
+    function setSearchProvider(providerName) {
+        if (validateProvider(providerName)) {
+            SEARCH_CONFIG.active.provider = providerName;
+            return true;
+        }
+        return false;
+    }
+
+    // NATO phonetic alphabet mapping
+    const NATO_ALPHABET = {
+        'alpha': 'A', 'alfa': 'A', 'bravo': 'B', 'charlie': 'C', 'delta': 'D',
+        'echo': 'E', 'foxtrot': 'F', 'golf': 'G', 'hotel': 'H', 'india': 'I',
+        'juliet': 'J', 'kilo': 'K', 'lima': 'L', 'mike': 'M', 'november': 'N',
+        'oscar': 'O', 'papa': 'P', 'quebec': 'Q', 'romeo': 'R', 'sierra': 'S',
+        'tango': 'T', 'uniform': 'U', 'victor': 'V', 'whiskey': 'W',
+        'xray': 'X', 'x-ray': 'X', 'yankee': 'Y', 'zulu': 'Z'
+    };
+
+    // NATO phonetic pattern: sequences of NATO words with optional separators
+    const natoPattern = new RegExp(
+        `\\b(?:${Object.keys(NATO_ALPHABET).join('|')})(?:[\\s,.-]+(?:${Object.keys(NATO_ALPHABET).join('|')}))*\\b`,
+        'gi'
+    );
+
+    // Function to convert NATO phonetic string to text
+    function natoToText(natoString) {
+        try {
+            // Split by common separators and clean up
+            const words = natoString.toLowerCase()
+                .split(/[\s,.-]+/)
+                .filter(word => word.length > 0);
+            
+            let result = '';
+            let validWordsCount = 0;
+            
+            for (const word of words) {
+                if (NATO_ALPHABET[word]) {
+                    result += NATO_ALPHABET[word];
+                    validWordsCount++;
+                }
+            }
+            
+            // Only return result if we have at least 2 valid NATO words
+            if (validWordsCount >= 2) {
+                return result;
+            }
+            
+            return null;
+        } catch (e) {
+            return null;
+        }
+    }
 
     // ===== TEXT SELECTION POPUP FEATURE =====
     let selectionPopup = null;
@@ -92,8 +202,8 @@
         
         // Update button click handler with current selected text
         searchButton.onclick = () => {
-            const encodedText = encodeURIComponent(selectedText.trim());
-            window.open(`https://www.google.com/search?q=${encodedText}`, '_blank');
+            const searchURL = buildSearchURL(selectedText.trim());
+            window.open(searchURL, '_blank');
             hideSelectionPopup();
         };
 
@@ -181,8 +291,8 @@
         }
     }
 
-    // Function to create translation component
-    function createTranslationComponent(binaryText, translatedText) {
+    // Function to create translation component for multiple decoder types
+    function createTranslationComponent(type, originalText, translatedText) {
         const container = document.createElement('div');
         container.style.cssText = `
             margin: 8px 0;
@@ -207,7 +317,13 @@
             letter-spacing: 0.5px;
             flex-shrink: 0;
         `;
-        header.textContent = '🔢 Binary:';
+        
+        // Set header text based on decoder type
+        if (type === 'nato') {
+            header.textContent = '📻 NATO:';
+        } else {
+            header.textContent = '🔢 Binary:';
+        }
 
         const translationDiv = document.createElement('div');
         translationDiv.style.cssText = `
@@ -220,11 +336,11 @@
         `;
         translationDiv.textContent = `${translatedText}`;
 
-        const googleLink = document.createElement('a');
-        googleLink.href = `https://www.google.com/search?q=${encodeURIComponent(translatedText)}&tbm=isch`;
-        googleLink.target = '_blank';
-        googleLink.rel = 'noopener noreferrer';
-        googleLink.style.cssText = `
+        const searchLink = document.createElement('a');
+        searchLink.href = buildSearchURL(translatedText);
+        searchLink.target = '_blank';
+        searchLink.rel = 'noopener noreferrer';
+        searchLink.style.cssText = `
             background: #4285f4;
             color: white;
             padding: 6px 8px;
@@ -237,51 +353,78 @@
             flex-shrink: 0;
             transition: background-color 0.2s;
         `;
-        googleLink.onmouseover = () => googleLink.style.backgroundColor = '#3367d6';
-        googleLink.onmouseout = () => googleLink.style.backgroundColor = '#4285f4';
+        searchLink.onmouseover = () => searchLink.style.backgroundColor = '#3367d6';
+        searchLink.onmouseout = () => searchLink.style.backgroundColor = '#4285f4';
 
-        // Google search icon (SVG)
-        const googleIcon = document.createElement('span');
-        googleIcon.innerHTML = `
+        // Search icon (SVG)
+        const searchIcon = document.createElement('span');
+        searchIcon.innerHTML = `
             <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor">
                 <path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"/>
             </svg>
         `;
 
-        googleLink.appendChild(googleIcon);
-        googleLink.appendChild(document.createTextNode('Search'));
+        searchLink.appendChild(searchIcon);
+        searchLink.appendChild(document.createTextNode('Search'));
 
         container.appendChild(header);
         container.appendChild(translationDiv);
-        container.appendChild(googleLink);
+        container.appendChild(searchLink);
 
         return container;
     }
 
-    // Function to process text nodes and detect binary
+    // Function to process text nodes and detect binary and NATO patterns
     function processTextNode(textNode) {
         const text = textNode.textContent;
-        const matches = text.match(binaryPattern);
-
-        if (matches) {
-            matches.forEach(match => {
+        let hasTranslations = false;
+        
+        // Check for binary patterns
+        const binaryMatches = text.match(binaryPattern);
+        if (binaryMatches) {
+            binaryMatches.forEach(match => {
                 const translated = binaryToText(match);
                 if (translated && translated.trim().length > 0) {
+                    if (!hasTranslations) {
+                        // Create a wrapper for the original text node
+                        const wrapper = document.createElement('span');
+                        textNode.parentNode.insertBefore(wrapper, textNode);
+                        wrapper.appendChild(textNode);
+                        hasTranslations = true;
+                    }
+
+                    // Add binary translation component after the text
+                    const translationComponent = createTranslationComponent('binary', match, translated);
+                    textNode.parentNode.insertBefore(translationComponent, textNode.nextSibling);
+                }
+            });
+        }
+        
+        // Check for NATO phonetic patterns and combine consecutive sequences
+        const natoMatches = text.match(natoPattern);
+        if (natoMatches) {
+            // Combine all NATO matches into a single sequence
+            const allNatoWords = natoMatches.join(' ');
+            const combinedTranslated = natoToText(allNatoWords);
+            
+            if (combinedTranslated && combinedTranslated.trim().length > 0) {
+                if (!hasTranslations) {
                     // Create a wrapper for the original text node
                     const wrapper = document.createElement('span');
                     textNode.parentNode.insertBefore(wrapper, textNode);
                     wrapper.appendChild(textNode);
-
-                    // Add translation component after the text
-                    const translationComponent = createTranslationComponent(match, translated);
-                    wrapper.parentNode.insertBefore(translationComponent, wrapper.nextSibling);
+                    hasTranslations = true;
                 }
-            });
+
+                // Add single NATO translation component for all matches
+                const translationComponent = createTranslationComponent('nato', allNatoWords, combinedTranslated);
+                textNode.parentNode.insertBefore(translationComponent, textNode.nextSibling);
+            }
         }
     }
 
-    // Function to scan for binary in comments
-    function scanForBinary() {
+    // Function to scan for decodable patterns in comments
+    function scanForPatterns() {
         // Create selectors for paragraph elements within comments
         const commentParagraphSelectors = COMMENT_SELECTORS.map(selector => `${selector} p`);
 
@@ -289,8 +432,8 @@
             const elements = document.querySelectorAll(selector);
             elements.forEach(element => {
                 // Skip if already processed
-                if (element.hasAttribute('data-binary-processed')) return;
-                element.setAttribute('data-binary-processed', 'true');
+                if (element.hasAttribute('data-processed')) return;
+                element.setAttribute('data-processed', 'true');
 
                 // Process all text nodes in the element
                 const walker = document.createTreeWalker(
@@ -312,7 +455,7 @@
     }
 
     // Initial scan
-    setTimeout(scanForBinary, 1000);
+    setTimeout(scanForPatterns, 1000);
 
     // Watch for dynamically loaded content
     const observer = new MutationObserver((mutations) => {
@@ -331,7 +474,7 @@
         });
 
         if (shouldScan) {
-            setTimeout(scanForBinary, 500);
+            setTimeout(scanForPatterns, 500);
         }
     });
 
@@ -347,9 +490,9 @@
             e.target.closest('[aria-expanded]') ||
             e.target.textContent.includes('more replies') ||
             e.target.textContent.includes('comments')) {
-            setTimeout(scanForBinary, 1000);
+            setTimeout(scanForPatterns, 1000);
         }
     });
 
-    console.log('Reddit Binary Decoder v0.2.0 loaded - Binary translation + Text selection Google search');
+    console.log('Reddit Binary Decoder v0.3.0 loaded');
 })();
