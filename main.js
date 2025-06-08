@@ -1,8 +1,8 @@
 // ==UserScript==
 // @name         Reddit Multi Code Decoder for obfuscated content
 // @namespace    freebee9@tuta.io
-// @version      0.2.0
-// @description  Detects and translates obfuscation code in Reddit comments + Text selection popup for Google search
+// @version      0.2.1
+// @description  Detects obfuscated text in Reddit comments as: binary (usually in NSFW); convert it back to human readable string. Implement a text selection popup for Google search.
 // @author       freebee9@tuta.io
 // @license      MIT
 // @match        https://www.reddit.com/*
