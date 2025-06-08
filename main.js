@@ -1,8 +1,8 @@
 // ==UserScript==
 // @name         Reddit Multi Code Decoder for obfuscated content
 // @namespace    freebee9@tuta.io
-// @version      0.1
-// @description  Detects and translates obfuscation code in Reddit comments
+// @version      0.2.0
+// @description  Detects and translates obfuscation code in Reddit comments + Text selection popup for Google search
 // @author       freebee9@tuta.io
 // @license      MIT
 // @match        https://www.reddit.com/*
@@ -12,6 +12,143 @@
 
 (function() {
     'use strict';
+
+    // ===== TEXT SELECTION POPUP FEATURE =====
+    let selectionPopup = null;
+
+    function createSelectionPopup() {
+        const popup = document.createElement('div');
+        popup.id = 'text-selection-popup';
+        popup.style.cssText = `
+            position: fixed;
+            background: #ffffff;
+            border: 1px solid #e0e0e0;
+            border-radius: 8px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+            padding: 8px;
+            z-index: 10000;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            font-size: 14px;
+            display: none;
+            max-width: 200px;
+        `;
+
+        const searchButton = document.createElement('button');
+        searchButton.textContent = '🔍 Search on Google';
+        searchButton.style.cssText = `
+            background: #4285f4;
+            color: white;
+            border: none;
+            padding: 8px 12px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 13px;
+            width: 100%;
+            transition: background-color 0.2s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            line-height: 1;
+        `;
+        
+        searchButton.onmouseover = () => searchButton.style.backgroundColor = '#3367d6';
+        searchButton.onmouseout = () => searchButton.style.backgroundColor = '#4285f4';
+
+        popup.appendChild(searchButton);
+        document.body.appendChild(popup);
+        
+        return { popup, searchButton };
+    }
+
+    function hideSelectionPopup() {
+        if (selectionPopup && selectionPopup.popup) {
+            selectionPopup.popup.style.display = 'none';
+        }
+    }
+
+    function showSelectionPopup(x, y, selectedText) {
+        if (!selectionPopup) {
+            selectionPopup = createSelectionPopup();
+        }
+
+        const { popup, searchButton } = selectionPopup;
+        
+        // Update button click handler with current selected text
+        searchButton.onclick = () => {
+            const encodedText = encodeURIComponent(selectedText.trim());
+            window.open(`https://www.google.com/search?q=${encodedText}`, '_blank');
+            hideSelectionPopup();
+        };
+
+        // Position popup near mouse cursor (using clientX/clientY with fixed positioning)
+        popup.style.left = `${x + 10}px`;
+        popup.style.top = `${y + 10}px`;
+        popup.style.display = 'block';
+
+        // Adjust position if popup goes off screen
+        const rect = popup.getBoundingClientRect();
+        const viewportWidth = window.innerWidth;
+        const viewportHeight = window.innerHeight;
+
+        if (rect.right > viewportWidth) {
+            popup.style.left = `${x - rect.width - 10}px`;
+        }
+        if (rect.bottom > viewportHeight) {
+            popup.style.top = `${y - rect.height - 10}px`;
+        }
+    }
+
+    // Check if the target element is within a comment
+    function isWithinComment(element) {
+        // Comment selectors for different Reddit layouts
+        const commentSelectors = [
+            // New Reddit
+            '[data-testid="comment"]',
+            'shreddit-comment',
+            '.Comment',
+            '[data-click-id="text"]',
+            
+            // Old Reddit
+            '.usertext-body',
+            '.md',
+            
+            // Generic fallbacks
+            '.comment',
+            '[class*="comment"]'
+        ];
+        
+        return commentSelectors.some(selector => element.closest(selector));
+    }
+
+    // Handle text selection events
+    document.addEventListener('mouseup', (e) => {
+        setTimeout(() => {
+            const selection = window.getSelection();
+            const selectedText = selection.toString().trim();
+            
+            if (selectedText.length > 0 && isWithinComment(e.target)) {
+                // Use clientX/clientY with fixed positioning for proper viewport positioning
+                showSelectionPopup(e.clientX, e.clientY, selectedText);
+            } else {
+                hideSelectionPopup();
+            }
+        }, 10);
+    });
+
+    // Hide popup when clicking elsewhere or on escape
+    document.addEventListener('mousedown', (e) => {
+        if (selectionPopup && selectionPopup.popup && !selectionPopup.popup.contains(e.target)) {
+            hideSelectionPopup();
+        }
+    });
+
+    document.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape') {
+            hideSelectionPopup();
+        }
+    });
+
+    // ===== ORIGINAL BINARY DECODER FUNCTIONALITY =====
 
     // Binary pattern: sequences of 0s and 1s, typically in groups of 8 (bytes)
     // Matches patterns like: 01001000 01100101 01101100 01101100 01101111
@@ -233,5 +370,5 @@
         }
     });
 
-    console.log('Reddit Binary Decoder loaded - will automatically translate binary code in comments');
+    console.log('Reddit Binary Decoder v0.2.0 loaded - Binary translation + Text selection Google search');
 })();
