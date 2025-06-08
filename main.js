@@ -100,24 +100,7 @@
 
     // Check if the target element is within a comment
     function isWithinComment(element) {
-        // Comment selectors for different Reddit layouts
-        const commentSelectors = [
-            // New Reddit
-            '[data-testid="comment"]',
-            'shreddit-comment',
-            '.Comment',
-            '[data-click-id="text"]',
-            
-            // Old Reddit
-            '.usertext-body',
-            '.md',
-            
-            // Generic fallbacks
-            '.comment',
-            '[class*="comment"]'
-        ];
-        
-        return commentSelectors.some(selector => element.closest(selector));
+        return COMMENT_SELECTORS.some(selector => element.closest(selector));
     }
 
     // Handle text selection events
@@ -149,6 +132,23 @@
     });
 
     // ===== ORIGINAL BINARY DECODER FUNCTIONALITY =====
+
+    // Centralized comment selectors for both selection popup and binary decoder
+    const COMMENT_SELECTORS = [
+        // New Reddit
+        '[data-testid="comment"]',
+        'shreddit-comment',
+        '.Comment',
+        '[data-click-id="text"]',
+        
+        // Old Reddit
+        '.usertext-body',
+        '.md',
+        
+        // Generic fallbacks
+        '.comment',
+        '[class*="comment"]'
+    ];
 
     // Binary pattern: sequences of 0s and 1s, typically in groups of 8 (bytes)
     // Matches patterns like: 01001000 01100101 01101100 01101100 01101111
@@ -282,24 +282,10 @@
 
     // Function to scan for binary in comments
     function scanForBinary() {
-        // Selectors for different Reddit layouts
-        const commentSelectors = [
-            // New Reddit
-            '[data-testid="comment"] p',
-            'shreddit-comment p',
-            '.Comment p',
-            '[data-click-id="text"] p',
+        // Create selectors for paragraph elements within comments
+        const commentParagraphSelectors = COMMENT_SELECTORS.map(selector => `${selector} p`);
 
-            // Old Reddit
-            '.usertext-body p',
-            '.md p',
-
-            // Generic fallbacks
-            '.comment p',
-            '[class*="comment"] p'
-        ];
-
-        commentSelectors.forEach(selector => {
+        commentParagraphSelectors.forEach(selector => {
             const elements = document.querySelectorAll(selector);
             elements.forEach(element => {
                 // Skip if already processed
@@ -334,14 +320,9 @@
         mutations.forEach((mutation) => {
             mutation.addedNodes.forEach((node) => {
                 if (node.nodeType === Node.ELEMENT_NODE) {
-                    // Check if the added node contains comments
-                    if (node.querySelector && (
-                        node.querySelector('[data-testid="comment"]') ||
-                        node.querySelector('shreddit-comment') ||
-                        node.querySelector('.Comment') ||
-                        node.querySelector('.usertext-body') ||
-                        node.classList.contains('comment') ||
-                        node.classList.contains('Comment')
+                    // Check if the added node contains comments using centralized selectors
+                    if (node.querySelector && COMMENT_SELECTORS.some(selector => 
+                        node.querySelector(selector) || node.matches(selector)
                     )) {
                         shouldScan = true;
                     }
