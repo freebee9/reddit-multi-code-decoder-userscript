@@ -13,6 +13,23 @@
 (function() {
     'use strict';
 
+    // Centralized comment selectors for both selection popup and binary decoder
+    const COMMENT_SELECTORS = [
+        // New Reddit
+        '[data-testid="comment"]',
+        'shreddit-comment',
+        '.Comment',
+        '[data-click-id="text"]',
+        
+        // Old Reddit
+        '.usertext-body',
+        '.md',
+        
+        // Generic fallbacks
+        '.comment',
+        '[class*="comment"]'
+    ];
+
     // ===== TEXT SELECTION POPUP FEATURE =====
     let selectionPopup = null;
 
@@ -131,24 +148,7 @@
         }
     });
 
-    // ===== ORIGINAL BINARY DECODER FUNCTIONALITY =====
-
-    // Centralized comment selectors for both selection popup and binary decoder
-    const COMMENT_SELECTORS = [
-        // New Reddit
-        '[data-testid="comment"]',
-        'shreddit-comment',
-        '.Comment',
-        '[data-click-id="text"]',
-        
-        // Old Reddit
-        '.usertext-body',
-        '.md',
-        
-        // Generic fallbacks
-        '.comment',
-        '[class*="comment"]'
-    ];
+    // ===== BINARY DECODER FUNCTIONALITY =====
 
     // Binary pattern: sequences of 0s and 1s, typically in groups of 8 (bytes)
     // Matches patterns like: 01001000 01100101 01101100 01101100 01101111

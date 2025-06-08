@@ -12,6 +12,7 @@ A userscript that automatically detects and translates binary code in Reddit com
 - **Real-time Translation**: Converts binary code to readable ASCII text
 - **Smart Filtering**: Only shows translations for valid, meaningful text
 - **Google Search Integration**: One-click search button for translated text
+- **Text Selection Search**: Select any text in comments and get a popup to search it on Google (dismiss by clicking elsewhere on the page)
 - **Cross-Platform**: Works on both new Reddit and old Reddit
 - **Dynamic Loading**: Handles lazy-loaded comments and expansions
 - **Performance Optimized**: Minimal impact on browsing experience
@@ -70,7 +71,8 @@ The script looks for patterns like:
 1. **Browse Reddit normally** - the script works automatically
 2. **Look for binary translation boxes** - they appear below comments containing binary
 3. **Click the search button** - instantly Google the translated text
-4. **Expand comments** - the script will scan newly loaded content
+4. **Select text for search** - highlight any text in comments to get a Google search popup (click anywhere on the page to dismiss)
+5. **Expand comments** - the script will scan newly loaded content
 
 ## ⚙️ Technical Details
 
@@ -89,6 +91,7 @@ The script looks for patterns like:
 - **Duplicate prevention**: Marks processed elements to avoid re-scanning
 - **Lazy loading support**: Monitors for dynamically added content
 - **Event-driven updates**: Responds to comment expansions
+- **Text selection detection**: Lightweight event handling for text selection
 
 ## 🛠️ Customization
 
@@ -128,6 +131,11 @@ googleLink.href = `https://www.bing.com/search?q=${encodeURIComponent(translated
 - Ensure the binary translates to readable ASCII text
 - Some binary sequences might be filtered out if they contain non-printable characters
 
+### Text Selection Popup Not Appearing
+- Make sure you're selecting text within comment areas
+- Try selecting longer text (minimum 3 characters)
+- Check if other extensions are interfering with text selection
+
 ### Performance Issues
 - The script is optimized for performance
 - If experiencing slowdowns, try disabling other Reddit extensions temporarily
@@ -135,13 +143,8 @@ googleLink.href = `https://www.bing.com/search?q=${encodeURIComponent(translated
 ## 🔄 Updates
 
 ### Version History
-- **v0.1**: Initial release with binary detection and Google search integration
-
-### Future Enhancements
-- Support for different binary formats (16-bit, custom delimiters)
-- Multiple search engine options
-- Copy-to-clipboard functionality
-- Custom styling themes
+- **v0.2.0**: Added text selection popup feature for instant Google search
+- **v0.1.0**: Initial release with binary detection and Google search integration
 
 ## 📄 License
 
