@@ -2,6 +2,14 @@
 
 A userscript that automatically detects and translates encoded messages in Reddit comments, making hidden content instantly readable. Supports binary code and NATO phonetic alphabet patterns.
 
+Screenshot of rendering of the translated binary code.
+
+![Screenshot of rendering of the translated binary code.](https://raw.githubusercontent.com/freebee9/reddit-multi-code-decoder-userscript/refs/heads/main/reddit-binary.png)
+
+Screenshot of rendering of the translated NATO code.
+
+![Screenshot of rendering of the translated NATO code.](https://raw.githubusercontent.com/freebee9/reddit-multi-code-decoder-userscript/refs/heads/main/reddit-nato.png)
+
 ## Code repository for contributions and support
 
 [github.com/freebee9/reddit-multi-code-decoder-userscript](https://github.com/freebee9/reddit-multi-code-decoder-userscript)
