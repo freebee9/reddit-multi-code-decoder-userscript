@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Reddit Multi Code Decoder for obfuscated content
 // @namespace    freebee9@tuta.io
-// @version      0.3.0
+// @version      0.3.1
 // @description  Detects obfuscated text in Reddit comments as: binary and NATO (usually in NSFW); convert it back to human readable string. Implement a text selection popup for Google search.
 // @author       freebee9@tuta.io
 // @license      MIT
@@ -21,11 +21,11 @@
         'shreddit-comment',
         '.Comment',
         '[data-click-id="text"]',
-        
+
         // Old Reddit
         '.usertext-body',
         '.md',
-        
+
         // Generic fallbacks
         '.comment',
         '[class*="comment"]'
@@ -42,7 +42,7 @@
                 videoSearch: "https://www.google.com/search?q={{QUERY}}&tbm=vid"
             },
             bing: {
-                name: "Bing", 
+                name: "Bing",
                 webSearch: "https://www.bing.com/search?q={{QUERY}}",
                 imageSearch: "https://www.bing.com/images/search?q={{QUERY}}"
             },
@@ -52,7 +52,7 @@
                 imageSearch: "https://duckduckgo.com/?q={{QUERY}}&iax=images&ia=images"
             }
         },
-        
+
         // Active configuration
         active: {
             provider: "google",
@@ -72,10 +72,10 @@
                 const template = fallbackProvider[type] || fallbackProvider.webSearch;
                 return template.replace('{{QUERY}}', encodeURIComponent(query));
             }
-            
+
             const type = searchType || SEARCH_CONFIG.active.defaultSearchType;
             const template = provider[type] || provider.webSearch;
-            
+
             return template.replace('{{QUERY}}', encodeURIComponent(query));
         } catch (error) {
             // Ultimate fallback to Google web search
@@ -97,9 +97,9 @@
 
     // NATO phonetic alphabet mapping
     const NATO_ALPHABET = {
-        'alpha': 'A', 'alfa': 'A', 'bravo': 'B', 'charlie': 'C', 'delta': 'D',
+        'apple': 'A', 'alpha': 'A', 'alfa': 'A', 'bravo': 'B', 'charlie': 'C', 'delta': 'D',
         'echo': 'E', 'foxtrot': 'F', 'golf': 'G', 'hotel': 'H', 'india': 'I',
-        'juliet': 'J', 'kilo': 'K', 'lima': 'L', 'mike': 'M', 'november': 'N',
+        'juliet': 'J', 'kilo': 'K', 'lima': 'L', 'mike': 'M', 'mira': 'M', 'november': 'N',
         'oscar': 'O', 'papa': 'P', 'quebec': 'Q', 'romeo': 'R', 'sierra': 'S',
         'tango': 'T', 'uniform': 'U', 'victor': 'V', 'whiskey': 'W',
         'xray': 'X', 'x-ray': 'X', 'yankee': 'Y', 'zulu': 'Z'
@@ -114,26 +114,52 @@
     // Function to convert NATO phonetic string to text
     function natoToText(natoString) {
         try {
-            // Split by common separators and clean up
-            const words = natoString.toLowerCase()
-                .split(/[\s,.-]+/)
-                .filter(word => word.length > 0);
-            
+            // First, normalize the string to handle x-ray properly
+            let normalizedString = natoString.toLowerCase();
+
+            // Create a list of NATO words sorted by length (descending) to match longer words first
+            const natoWords = Object.keys(NATO_ALPHABET).sort((a, b) => b.length - a.length);
+
             let result = '';
+            let position = 0;
             let validWordsCount = 0;
-            
-            for (const word of words) {
-                if (NATO_ALPHABET[word]) {
-                    result += NATO_ALPHABET[word];
-                    validWordsCount++;
+
+            while (position < normalizedString.length) {
+                // Skip whitespace and separators
+                while (position < normalizedString.length && /[\s,.-]/.test(normalizedString[position])) {
+                    position++;
+                }
+
+                if (position >= normalizedString.length) break;
+
+                let matched = false;
+
+                // Try to match each NATO word starting from current position
+                for (const word of natoWords) {
+                    if (normalizedString.substr(position, word.length) === word) {
+                        // Check if this is a complete word (not part of a larger word)
+                        const nextChar = normalizedString[position + word.length];
+                        if (!nextChar || /[\s,.-]/.test(nextChar)) {
+                            result += NATO_ALPHABET[word];
+                            position += word.length;
+                            validWordsCount++;
+                            matched = true;
+                            break;
+                        }
+                    }
+                }
+
+                if (!matched) {
+                    // Skip the current character if no NATO word was found
+                    position++;
                 }
             }
-            
+
             // Only return result if we have at least 2 valid NATO words
             if (validWordsCount >= 2) {
                 return result;
             }
-            
+
             return null;
         } catch (e) {
             return null;
@@ -177,13 +203,13 @@
             justify-content: center;
             line-height: 1;
         `;
-        
+
         searchButton.onmouseover = () => searchButton.style.backgroundColor = '#3367d6';
         searchButton.onmouseout = () => searchButton.style.backgroundColor = '#4285f4';
 
         popup.appendChild(searchButton);
         document.body.appendChild(popup);
-        
+
         return { popup, searchButton };
     }
 
@@ -199,7 +225,7 @@
         }
 
         const { popup, searchButton } = selectionPopup;
-        
+
         // Update button click handler with current selected text
         searchButton.onclick = () => {
             const searchURL = buildSearchURL(selectedText.trim());
@@ -235,7 +261,7 @@
         setTimeout(() => {
             const selection = window.getSelection();
             const selectedText = selection.toString().trim();
-            
+
             if (selectedText.length > 0 && isWithinComment(e.target)) {
                 // Use clientX/clientY with fixed positioning for proper viewport positioning
                 showSelectionPopup(e.clientX, e.clientY, selectedText);
@@ -317,7 +343,7 @@
             letter-spacing: 0.5px;
             flex-shrink: 0;
         `;
-        
+
         // Set header text based on decoder type
         if (type === 'nato') {
             header.textContent = '📻 NATO:';
@@ -378,7 +404,7 @@
     function processTextNode(textNode) {
         const text = textNode.textContent;
         let hasTranslations = false;
-        
+
         // Check for binary patterns
         const binaryMatches = text.match(binaryPattern);
         if (binaryMatches) {
@@ -399,14 +425,14 @@
                 }
             });
         }
-        
+
         // Check for NATO phonetic patterns and combine consecutive sequences
         const natoMatches = text.match(natoPattern);
         if (natoMatches) {
             // Combine all NATO matches into a single sequence
             const allNatoWords = natoMatches.join(' ');
             const combinedTranslated = natoToText(allNatoWords);
-            
+
             if (combinedTranslated && combinedTranslated.trim().length > 0) {
                 if (!hasTranslations) {
                     // Create a wrapper for the original text node
@@ -464,7 +490,7 @@
             mutation.addedNodes.forEach((node) => {
                 if (node.nodeType === Node.ELEMENT_NODE) {
                     // Check if the added node contains comments using centralized selectors
-                    if (node.querySelector && COMMENT_SELECTORS.some(selector => 
+                    if (node.querySelector && COMMENT_SELECTORS.some(selector =>
                         node.querySelector(selector) || node.matches(selector)
                     )) {
                         shouldScan = true;
@@ -494,5 +520,5 @@
         }
     });
 
-    console.log('Reddit Binary Decoder v0.3.0 loaded');
+    console.log('Reddit Binary Decoder v0.3.1 loaded');
 })();
