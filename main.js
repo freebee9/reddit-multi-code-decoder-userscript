@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Reddit Multi Code Decoder for obfuscated content
 // @namespace    freebee9@tuta.io
-// @version      0.3.1
+// @version      0.3.2
 // @description  Detects obfuscated text in Reddit comments as: binary and NATO (usually in NSFW); convert it back to human readable string. Implement a text selection popup for Google search.
 // @author       freebee9@tuta.io
 // @license      MIT
@@ -102,7 +102,7 @@
         'juliet': 'J', 'kilo': 'K', 'lima': 'L', 'mike': 'M', 'mira': 'M', 'november': 'N',
         'oscar': 'O', 'papa': 'P', 'quebec': 'Q', 'romeo': 'R', 'sierra': 'S',
         'tango': 'T', 'uniform': 'U', 'victor': 'V', 'whiskey': 'W',
-        'xray': 'X', 'x-ray': 'X', 'yankee': 'Y', 'zulu': 'Z'
+        'xray': 'X', 'x-ray': 'X', 'yankee': 'Y', 'zulu': 'Z', 'space': ' '
     };
 
     // NATO phonetic pattern: sequences of NATO words with optional separators
